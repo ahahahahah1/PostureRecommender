@@ -19,7 +19,7 @@ from utils_rep import *
 
 import params
 class BasicInteractionNetworks:
-    def __init__(self,n_obj, out_dim,file_n):
+    def __init__(self,n_obj, out_dim,file_n): #mode is either test/train
         self.n_objects = n_obj
         self.object_dim = params.object_dim
         self.output_dim = params.output_dim
@@ -35,12 +35,16 @@ class BasicInteractionNetworks:
         self.n_epoch = params.n_epoch
         self.batch_size = params.batch_size
 
-        self.dataset = LandmarksDataset(xl_file='../data/'+file_n+'.xlsx',
+        self.train_dataset = LandmarksDataset(xl_file='../data/train/' + file_n +'.xlsx',
                                     root_dir='./')
         # self.test_dataset = LandmarksDataset(xl_file='../data/13_2_SG_'+dttype+'.xlsx',
         #                             root_dir='./')
-        self.test_dataset = self.dataset
-        self.train_indices, self.val_indices, self.test_indices,  = split_data(self.dataset,self.batch_size,remove_rear=100,train_size=.9,val_size=0.5)#this serves as train
+        self.test_dataset = LandmarksDataset(xl_file='../data/test/' + file_n + '.xlsx',
+                                    root_dir='./')
+        
+        # self.test_dataset = self.train_dataset
+        self.train_indices, self.val_indices, = split_data(self.train_dataset,self.batch_size,remove_rear=100,train_size=0.9,val_size=0)#this serves as train
+        self.test_indices = list(range(0,len(self.test_dataset)))
         # self.train_loader, self.test_loader,  = split_data(self.test_dataset,self.batch_size,remove_rear=100,train_size=.6)# this serves as test
         self.train_loader = DataLoader(self.train_indices,  shuffle=True)
         self.test_loader = DataLoader(self.test_indices, batch_size=1, shuffle=False)
@@ -63,7 +67,7 @@ class BasicInteractionNetworks:
             #     noise=min(0,1 - 1.1*(epoch)/self.n_epoch)
             for batch_id, train_data_rep in enumerate(self.train_loader):
                 # print(train_data)
-                train_data=self.dataset[train_data_rep]
+                train_data=self.train_dataset[train_data_rep]
                 # import pdb;pdb.set_trace()
                 objects,  sender_relations, receiver_relations, relation_info,    external_effect_info, target = tranform_batch_BIN(train_data, self.n_objects,self.object_dim,self.USE_CUDA,noise)
 
@@ -106,8 +110,8 @@ class BasicInteractionNetworks:
 
         return interaction_network
 
-    def test(self,interaction_network,data_loader):
-        print("TESTIN\n")
+    def test(self,interaction_network,data_loader,dataset): #data_type decides whether we are testing on validation data or testing data
+        print("TESTING\n")
         interaction_network.eval()
         empty_loss_id = params.loss_id
         loss_id = copy.deepcopy(empty_loss_id)
@@ -122,7 +126,7 @@ class BasicInteractionNetworks:
         #  this variation reduces speed as each data input is processed one at a time but we can get predictions with NO data now, test _data vals cane be removed for batch prediction with data
         with torch.no_grad():
             for batch_id, test_data_num in enumerate(data_loader):
-                test_data_vals=self.test_dataset[test_data_num]
+                test_data_vals=dataset[test_data_num]
                 rep_loss=0
                 
                 # import pdb;pdb.set_trace()
@@ -154,6 +158,7 @@ class BasicInteractionNetworks:
                 print("rep loss",rep_loss,(steps+1))
 
                 test_loss+=rep_loss
+            print("Batch ID = ", batch_id)
             test_loss /= (batch_id+1)
-            print("avg test loss BIN>py",test_loss)
+            print("avg test loss BIN.py",test_loss)
         return loss_id,targets,predictions,test_loss

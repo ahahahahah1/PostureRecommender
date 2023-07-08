@@ -54,9 +54,9 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.utils import shuffle
 import random
 
-# import sys
-# file_n=sys.argv[1]
-fl=open("PUSHUP_Classification","a+")
+import sys
+file_n=sys.argv[1]
+fl=open("ClassificationResult","a+")
 
 
 # important for reproducibility
@@ -68,7 +68,7 @@ for seed_ in [123,44,222,566,7000]:
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    specs="../results/"
+    specs = '../results/'
     from pathlib import Path
     Path(specs).mkdir(parents=True, exist_ok=True)
     params.savepath = params.savepath_ +"_"+str(seed)
@@ -86,23 +86,24 @@ for seed_ in [123,44,222,566,7000]:
     else:
         model = bin.train()
         torch.save(model.state_dict(), '../models/test_'+params.savepath+'.pth')
-    cor_loss_id,targets,predictions,_ = bin.test(model,bin.val_loader)
+        
+    cor_val_loss_id,targets,predictions,_ = bin.test(model,bin.val_loader, bin.train_dataset)
+    plot_loss(cor_val_loss_id['total'],specs,'validation', cor_val_loss_id, True)
+    ani_r=stick_animation(cor_val_loss_id,targets,predictions,name=file_n+"_validation_",savepath=specs)
+    
+    cor_test_loss_id, test_targets, test_predictions, _ = bin.test(model, bin.test_loader, bin.test_dataset)
+    plot_loss(cor_test_loss_id['total'],specs,'test',cor_test_loss_id, True)
+    ani_r_test=stick_animation(cor_test_loss_id,test_targets,test_predictions,name=file_n+"_test_",savepath=specs)
 
+    ## at this point i can train multiple models and choose the model with best wighted f1 score on val dataset
+    ## but this method doesnt checkk all variations in data, its always better to fix hyper prams and train multiple models using cv
 
-    plot_loss(cor_loss_id['total'],specs,cor_loss_id,True)
-    ani_r=stick_animation(cor_loss_id,targets,predictions,name=file_n+"_",savepath=specs)
-
-    ### at this point i can train multiple models and choose the model with best wighted f1 score on val dataset
-    ### but this method doesnt checkk all variations in data, its always better to fix hyper prams and train multiple models using cv
-
-    ### i have train_loader,test_loader and val loader for ccorect class noww along with their indices
+    ## i have train_loader,test_loader and val loader for ccorect class noww along with their indices
 
 
 
     ## FROM HERE CLASSIFICATION part starts
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 
 
     model = BasicInteractionNetworkModule(params.object_dim, params.relation_dim, params.effect_dim, params.external_effect_dim, params.output_dim)
@@ -120,9 +121,9 @@ for seed_ in [123,44,222,566,7000]:
     #                                 root_dir='./')
 
     cor_train_loader = DataLoader(bin.train_indices + bin.val_indices,  shuffle=True)
-    cor_loss_id_total,cor_targets,cor_predictions = test(model, cor_train_loader,bin.dataset  )
+    cor_loss_id_total,cor_targets,cor_predictions = test(model, cor_train_loader, bin.train_dataset)
     # print("train cor mean total loss", np.mean(np.sum( [cor_loss_id['total'] for cor_loss_id in cor_loss_id_total]))) # this mean formula for nested list of diferent size is wrong
-    cor_loss_id_testtotal,cor_testtargets,cor_testpredictions = test(model, bin.test_loader, bin.dataset        )
+    cor_loss_id_testtotal,cor_testtargets,cor_testpredictions = test(model, bin.test_loader, bin.test_dataset)
 
 
     # print("test cor mean total loss",np.mean(np.sum([cor_loss_id['total'] for cor_loss_id in cor_loss_id_testtotal])))
@@ -134,28 +135,35 @@ for seed_ in [123,44,222,566,7000]:
     for index,cor_loss_id in enumerate(cor_loss_id_total):
         # print(1,cor_loss_id,"\n")
         enc =dtft_conversion(cor_loss_id)
+        print()
         # enc.extend(dtft_pos_conversion(cor_targets[index]))
         X.append(enc)
         Y.append(0)
+    print("correct label train_ids contains NaN = ", np.isnan(X).any())
     for index,cor_loss_id in enumerate(cor_loss_id_testtotal):
         enc =dtft_conversion(cor_loss_id)
         # enc.extend(dtft_pos_conversion(cor_testtargets[index]))
-
         X_test.append(enc)
         Y_test.append(0)
+    print("correct label test_ids contains NaN = ", np.isnan(X_test).any())
 
     inc_labels=params.inc_labels#
     for iter,inc in enumerate(inc_labels):
-        incorrect_dataset = LandmarksDataset(xl_file='../data/'+inc+'.xlsx',
+        incorrect_train_dataset = LandmarksDataset(xl_file='../data/train/'+inc+'.xlsx',
                                             root_dir='./')
-        inc_train_indices, inc_test_indices,  = split_data(incorrect_dataset,1,remove_rear=100,train_size=.6)
+        # inc_train_indices, inc_test_indices,  = split_data(incorrect_dataset,1,remove_rear=100,train_size=.6)
+        inc_train_indices = list(range(0,len(incorrect_train_dataset)))
         inc_train_loader = DataLoader(inc_train_indices,  shuffle=True)
+        
+        incorrect_test_dataset = LandmarksDataset(xl_file='../data/test/' + inc + '.xlsx',
+                                            root_dir='./')
+        inc_test_indices = list(range(0,len(incorrect_test_dataset)))
         inc_test_loader = DataLoader(inc_test_indices, batch_size=1, shuffle=False)
 
-        inc_loss_id_total,inc_targets,inc_predictions = test(model, inc_train_loader,incorrect_dataset )
-        # print(inc,"train incor mean total loss",np.mean(np.sum([inc_loss_id['total'] for inc_loss_id in inc_loss_id_total])))
+        inc_loss_id_total,inc_targets,inc_predictions = test(model, inc_train_loader, incorrect_train_dataset)
+        # # print(inc,"train incor mean total loss",np.mean(np.sum([inc_loss_id['total'] for inc_loss_id in inc_loss_id_total])))
 
-        inc_loss_id_testtotal,inc_testtargets,inc_testpredictions = test(model, inc_test_loader,incorrect_dataset )
+        inc_loss_id_testtotal,inc_testtargets,inc_testpredictions = test(model, inc_test_loader,incorrect_test_dataset )
         print(inc, " Train len %d test len %d"%(len(inc_targets),len(inc_testtargets)))
 
         print(inc, " Train len %d test len %d"%(len(inc_targets),len(inc_testtargets)),file=fl)
@@ -170,15 +178,16 @@ for seed_ in [123,44,222,566,7000]:
             X.append(enc)
             Y.append(iter+1)
             # Y.append(1)
+        print("incorrect label train_ids contains NaN= ", np.isnan(X).any())
 
         for index,inc_loss_id in enumerate(inc_loss_id_testtotal):
         
             enc = dtft_conversion(inc_loss_id)
             # enc.extend(dtft_pos_conversion(inc_testtargets[index]))
-
             X_test.append(enc)
             Y_test.append(iter+1)
             # Y_test.append(1)
+        print("incorrect label test_ids contains NaN = ", np.isnan(X_test).any())  
 
 
     print("Train length %d, Test length %d, Cor count in Test %d" %(len(X),len(X_test),np.count_nonzero(np.array(Y_test)==0)))

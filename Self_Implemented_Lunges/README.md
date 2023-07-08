@@ -11,5 +11,7 @@ Faced this error
 
 Localized the error to the command `cv2.imshow()`. I simply commented it out for now since couldn't find an immediate fix online.
 
+* There was a warning being generated in dataset_rep.py for the step of adding columns 33 and 34 (top and bottom points) for Pandas (SettingsWithCopyWarning). I created an explicit copy of df to remove that warning.
+
 
 ### Temporarily setup SSH key on WSL as well. Will need to later delete that and setup sharing of SSH keys between WSL and Windows.

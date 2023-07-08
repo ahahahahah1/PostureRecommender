@@ -1,0 +1,56 @@
+g1 Train len 109 test len 14
+b1  Train len 66 test len 22
+b2  Train len 82 test len 43
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+g1 Train len 109 test len 3
+b1  Train len 45 test len 22
+b2  Train len 74 test len 41
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+RF best parameters : {'n_estimators': 100, 'min_samples_split': 10, 'max_features': 'sqrt', 'max_depth': 14, 'criterion': 'gini'}
+[[ 3  0  0]
+ [ 0 21  1]
+ [ 0  0 41]] 
+               precision    recall  f1-score   support
+
+          g1       1.00      1.00      1.00         3
+          b1       1.00      0.95      0.98        22
+          b2       0.98      1.00      0.99        41
+
+    accuracy                           0.98        66
+   macro avg       0.99      0.98      0.99        66
+weighted avg       0.99      0.98      0.98        66
+
+g1 Train len 109 test len 3
+b1  Train len 45 test len 22
+b2  Train len 74 test len 41
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+g1 Train len 109 test len 14
+b1  Train len 66 test len 22
+b2  Train len 82 test len 43
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+g1 Train len 109 test len 14
+b1  Train len 66 test len 22
+b2  Train len 82 test len 43
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+g1 Train len 109 test len 14
+b1  Train len 66 test len 22
+b2  Train len 82 test len 43
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+g1 Train len 109 test len 14
+g1 Train len 109 test len 17
+b1  Train len 68 test len 22
+b2  Train len 84 test len 43
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results
+b1  Train len 68 test len 22
+g1 Train len 109 test len 14
+b1  Train len 66 test len 22
+b2  Train len 82 test len 43
+Hyperparams train_data=g1learning_rate=0.0003dtft_width=6dropout=0.5epoch=100seed_val=112
+Random forest results

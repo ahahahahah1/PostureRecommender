@@ -1,3 +1,14 @@
+# In this file, we import the dataset from Excel and process it. 
+# There are multiple steps of processing. The initial step is to read data from the excel file sheet-by-sheet
+# Then, we process the data by dropping all the indices that we do not need (too few recorded time stamps)
+# Post this, we call the function shift_cols() which detects which leg is in the front and assigns it position values to the correct columns. 
+# We treat all lunges to be right side facing.
+# After this, we add the top and bottom (fixed) points to our dataset
+# And lastly, we calculate and append velocity values in the dataset
+
+# When lunges front leg is right leg, sum(y in a rep for right knee) > sum(y in a rep for left knee)
+# So we first identify which leg is bending more and then normalize that data s.t. the front leg (non bending leg) has a smaller x value (it is right facing)
+
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms, utils
 import numpy as np
@@ -8,6 +19,7 @@ from utils_rep import normalize_time
 
 # warnings.simplefilter(action='always', category=pd.errors.PerformanceWarning)
 import statsmodels.api as sm
+import os
 
 class LandmarksDataset(Dataset):
 
@@ -103,43 +115,96 @@ class LandmarksDataset(Dataset):
         return new_df
 
     def shift_cols(self,df):
-        right_knee='26'
-        left_knee = '25'
-        right_heel = '30'
-        left_heel = '29'
-        right_toe = '32'
-        left_toe = '31'
-
-        if sum(df.iloc[:10]['x'+left_knee]) < sum(df.iloc[:10]['x'+right_knee]): # if true right knee is ahead of left knee
+        right_shoulder = '11'
+        right_hip = '23'
+        right_knee = '25'
+        right_heel = '29'
+        right_toe = '31'
+        
+        left_shoulder = '12'
+        left_hip = '24'
+        left_knee = '26'
+        left_heel = '30'
+        left_toe = '32'
+        
+        if sum(df.iloc[:]['y'+left_knee]) < sum(df.iloc[:]['y'+right_knee]): # left leg is bending in this rep
+            # print("Left leg is bending. right leg is front leg => for correct orientation, sum(right_knee:x) < sum(left_knee:x)")
+            if sum(df.iloc[:10]['x'+right_knee]) > sum(df.iloc[:10]['x'+left_knee]):
+                for i in range(33):
+                    df.loc[:,'x'+str(i)] = 1 - df.loc[:,'x'+str(i)]
+            front_shoulder = right_shoulder
+            front_hip = right_hip
             front_knee = right_knee
             back_knee = left_knee
             front_heel = right_heel
             back_toe = left_toe
         else:
-            # import pdb;pdb.set_trace()
-            front_knee=left_knee
-            back_knee=right_knee
+            # print("Right leg is bending. left leg is front leg => for correct orientation, sum(left_knee:x) < sum(right_knee:x)")
+            if sum(df.iloc[:10]['x'+right_knee]) < sum(df.iloc[:10]['x'+left_knee]):
+                for i in range(33):
+                    df.loc[:,'x'+str(i)] = 1 - df.loc[:,'x'+str(i)]
+            front_shoulder = left_shoulder
+            front_hip = left_hip
+            front_knee = left_knee
+            back_knee = right_knee
             front_heel = left_heel
             back_toe = right_toe
-#  all our data used is right facing
+        
             
-        # if  df['x'+right_knee].isin([-1]).any().any():
-        #     right_shoulder = left_shoulder
-        #     right_hip = left_hip
-        #     right_knee = left_knee
+        if  df['x'+right_knee].isin([-1]).any().any():
+            right_shoulder = left_shoulder
+            right_hip = left_hip
+            right_knee = left_knee
         if df['x'+right_knee].isin([-1]).any().any() or df['x'+left_knee].isin([-1]).any().any():
             print("BOTH LEFT AND RIGHT knee has missing data")
 
-
-
         df_org=df.copy()
-        coords_id = params.coords_ids # right shulder, right hip, font knee,back knee, front heel, back toe
-        target_id = [front_knee,back_knee,front_heel,back_toe]
-        for id,val in enumerate(coords_id[2:6]):
+        coords_id = params.coords_ids # right shoulder, right hip, front knee,back knee, front heel, back toe
+        target_id = [front_shoulder, front_hip, front_knee,back_knee,front_heel,back_toe]
+        for id,val in enumerate(coords_id[:6]):
             mask = ['x'+str(val), 'y' + str(val), 'z' + str(val) ]
-            target = ['x'+str(target_id[id]), 'y' + str(target_id[id]), 'z' + str(target_id[id]) ]
-            df_org[mask ] = df[target]
+            target = ['x'+str(target_id[id]), 'y' + str(target_id[id]), 'z' + str(target_id[id])]
+            df_org[mask] = df[target]
         return df_org
+        
+#         right_knee='26'
+#         left_knee = '25'
+#         right_heel = '30'
+#         left_heel = '29'
+#         right_toe = '32'
+#         left_toe = '31'
+
+#         if sum(df.iloc[:10]['x'+left_knee]) < sum(df.iloc[:10]['x'+right_knee]): # if true right knee is ahead of left knee
+#             front_knee = right_knee
+#             back_knee = left_knee
+#             front_heel = right_heel
+#             back_toe = left_toe
+#         else:
+#             # import pdb;pdb.set_trace()
+#             front_knee=left_knee
+#             back_knee=right_knee
+#             front_heel = left_heel
+#             back_toe = right_toe
+# #  all our data used is right facing
+            
+#         # if  df['x'+right_knee].isin([-1]).any().any():
+#         #     right_shoulder = left_shoulder
+#         #     right_hip = left_hip
+#         #     right_knee = left_knee
+#         if df['x'+right_knee].isin([-1]).any().any() or df['x'+left_knee].isin([-1]).any().any():
+#             print("BOTH LEFT AND RIGHT knee has missing data")
+
+
+
+#         df_org=df.copy()
+#         coords_id = params.coords_ids # right shulder, right hip, font knee,back knee, front heel, back toe
+#         target_id = [front_knee,back_knee,front_heel,back_toe]
+#         for id,val in enumerate(coords_id[2:6]):
+#             mask = ['x'+str(val), 'y' + str(val), 'z' + str(val) ]
+#             target = ['x'+str(target_id[id]), 'y' + str(target_id[id]), 'z' + str(target_id[id]) ]
+#             df_org[mask] = df[target]
+#         return df_org
+
 
     def pre_process(self,df):
         cols = [2]
@@ -177,7 +242,7 @@ class LandmarksDataset(Dataset):
             select.append('x'+str(coords))
             select.append('y'+str(coords))
             select.append('z'+str(coords))
-
+            
         # select = ['time','x12','y12', 'x14','y14','x16','y16','x24','y24','x26','y26','x28','y28'] #shoulder press
 
         # print("SIZE = %d before 0 removal"%(len(df)))
@@ -189,10 +254,10 @@ class LandmarksDataset(Dataset):
             return pd.DataFrame()
         # print("SIZE = %d after 0 removal\n\n"%(len(df)))
         # import pdb;pdb.set_trace()
-# THIS DID THE TRICK
+        # print(df.columns)
+        # THIS DID THE TRICK
         df = self.add_staionary_points(df)
         df = self.smooth(df,select)
- 
     
 #         velocity
         for i in range(1,len(df.columns),3):
@@ -210,7 +275,7 @@ class LandmarksDataset(Dataset):
             select.append('dx'+str(coords))
             select.append('dy'+str(coords))
 
-        df = df[select]
+        df = df[select] # After this, we only have the required coord_ids as columns in our dataset along with their velocities
 
 
  
@@ -247,8 +312,10 @@ class LandmarksDataset(Dataset):
         data_time={}
         sheet_to_df_map_processed = {}  # this is an additional check to remove bad values but it removes many good values also
         new_key = 0
+        
+        writer = pd.ExcelWriter(os.path.join('../data_with_top_bottom/' + file_path[8:-2]) + file_path[-2:] + '.xlsx', engine='xlsxwriter')
         for key in sheet_to_df_map.keys():
-
+            
             df = sheet_to_df_map[key] 
             # print(df.columns,"process_data fotm excel")
             if "Unnamed: 0" in df.columns:
@@ -262,10 +329,11 @@ class LandmarksDataset(Dataset):
             else:
                 print(file_path,"df key org accepted",key,len(df))
             # if len(df) > 8:
+            df.to_excel(writer,sheet_name=str(new_key), index=False)
             sheet_to_df_map_processed[str(new_key)] = df
                 # print("df key",str(new_key),len(sheet_to_df_map_processed[str(new_key)] ))
             new_key+=1
-
+        writer._save()
         # print("wrote excel file")
         # writer = pd.ExcelWriter('processed.xlsx', engine='xlsxwriter')
         # for key in sheet_to_df_map_processed.keys():
@@ -275,17 +343,28 @@ class LandmarksDataset(Dataset):
         # writer.save()
 
         return sheet_to_df_map_processed
+    
+    
     def add_staionary_points(self,df):
-        assert len(df.columns) == 100, 'Mediapipe not used for pose estimation '+str(len(df.columns))
-        # print(df.head())
-        top_id = (len(df.columns)-1)//3
+        df_copy = df.copy()
+        assert len(df_copy.columns) == 100, "Mediapipe not used for pose estimation" + str(len(df_copy.columns))
+        # assert len(df_copy.columns) == 1 + 3*len(params.coords_ids[:-2]), 'Mediapipe not used for pose estimation '+str(len(df.columns))
+        
+        # # The correct columns list is [time, all x,y,z coordinates of ids except top and bottom (they are to be added)]
+        # # print(df.head())
+        
+        top_id = (len(df_copy.columns)-1)//3
+        # print("top_id = ", top_id)
         bottom_id = top_id +1
+        
+        # top_id = 33
+        # bottom_id = 34
         col_index = np.repeat([top_id,bottom_id],3)
         vals= [.5,0,0,.5,1,0]
         for i,j,k in zip(['x','y','z','x','y','z'],col_index,vals):
-            df.loc[:,str(i)+str(j)] = k
-        
-        return df
+            df_copy.loc[:, str(i)+str(j)] = k
+        # print(df_copy.loc[:,['x33','y33','x34', 'y34']])
+        return df_copy
 
 
     def __len__(self,):

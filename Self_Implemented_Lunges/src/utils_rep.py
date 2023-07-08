@@ -180,7 +180,7 @@ def get_landmark_errors(target,prediction,loss_id):
             # ct=ct%5
     return loss_id
 
-def plot_loss(loss,save_path,loss_id=None,body=False):
+def plot_loss(loss,save_path,dataset_type,loss_id=None,body=False):
     if not body:
         fig, axs = plt.subplots(1, 1)
         axs.plot(loss)
@@ -228,7 +228,7 @@ def plot_loss(loss,save_path,loss_id=None,body=False):
                 ax.set(xlabel='')
 
     # plt.show()
-    plt.savefig(save_path+"_test.jpg")
+    plt.savefig(save_path+ dataset_type+ ".jpg")
     plt.close()
 
 def create_subplots():

@@ -175,6 +175,7 @@ def test(model,data_loader,dataset):
                     ex_count+=1
                     rep_loss += loss.item()
                     loss_id = get_landmark_errors(target,prediction,loss_id)
+                    
                     # print("loss id",loss_id['total'])
                 loss_id_all.append(loss_id)
                 targets_all.append(targets)
